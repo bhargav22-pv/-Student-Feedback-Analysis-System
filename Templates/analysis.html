@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | EduPulse</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f7f4;
+            color: #263328;
+        }
+        header {
+            background: #35633e;
+            color: white;
+            padding: 22px 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        header h1 { margin: 0; }
+        .logout button {
+            padding: 10px 16px;
+            border: 1px solid white;
+            background: transparent;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        main { max-width: 1100px; margin: 28px auto; padding: 0 18px; }
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 16px;
+        }
+        .card, .panel {
+            background: white;
+            padding: 22px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px #00000008;
+            margin-bottom: 20px;
+        }
+        .card h3 { color: #657267; font-size: 14px; }
+        .number { color: #35633e; font-size: 30px; font-weight: bold; }
+        h2 { color: #35633e; }
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid #e5e9e5;
+        }
+        th { background: #eef4ee; }
+        .rating-row {
+            display: grid;
+            grid-template-columns: 80px 1fr 45px;
+            align-items: center;
+            gap: 12px;
+            margin: 14px 0;
+        }
+        .track { height: 12px; background: #e8eee8; border-radius: 10px; overflow: hidden; }
+        .bar { height: 100%; background: #4e8958; width: 0; }
+        .chart { max-width: 100%; height: auto; display: block; margin: 12px auto; }
+        .empty { color: #69766b; padding: 18px 0; }
+        @media (max-width: 500px) {
+            header { align-items: flex-start; }
+            .rating-row { grid-template-columns: 65px 1fr 35px; gap: 7px; }
+        }
+    </style>
+</head>
+<body>
+<header>
+    <div>
+        <h1>EduPulse Admin</h1>
+        <p>Student Feedback Analysis Dashboard</p>
+    </div>
+    <form class="logout" method="POST" action="{{ url_for('admin_logout') }}">
+        <button type="submit">Log Out</button>
+    </form>
+</header>
+
+<main>
+    <div class="cards">
+        <div class="card">
+            <h3>Total Feedback Responses</h3>
+            <div class="number">{{ total_responses }}</div>
+        </div>
+        <div class="card">
+            <h3>Overall Average Rating</h3>
+            <div class="number">
+                {% if overall_average is not none %}
+                    {{ "%.2f"|format(overall_average) }} / 5
+                {% else %}
+                    N/A
+                {% endif %}
+            </div>
+        </div>
+        <div class="card">
+            <h3>Courses Reviewed</h3>
+            <div class="number">{{ course_count }}</div>
+        </div>
+    </div>
+
+    <section class="panel">
+        <h2>Course-wise Ratings</h2>
+        {% if course_results %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>Course</th><th>Responses</th><th>Average Rating</th></tr>
+                </thead>
+                <tbody>
+                {% for course in course_results %}
+                    <tr>
+                        <td>{{ course.course_name }}</td>
+                        <td>{{ course.responses }}</td>
+                        <td>{{ "%.2f"|format(course.average_rating) }} / 5</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+            <p class="empty">No feedback has been submitted yet.</p>
+        {% endif %}
+    </section>
+
+    <section class="panel">
+        <h2>Rating Distribution</h2>
+        {% for rating, count in rating_counts.items() %}
+            {% set percentage = (count * 100 / total_responses) if total_responses else 0 %}
+            <div class="rating-row">
+                <span>{{ rating }} Star</span>
+                <div class="track">
+                    <div class="bar" data-width="{{ percentage }}"></div>
+                </div>
+                <span>{{ count }}</span>
+            </div>
+        {% endfor %}
+    </section>
+
+    {% if has_data %}
+        <section class="panel">
+            <h2>Course Rating Chart</h2>
+            <img class="chart"
+                 src="{{ url_for('static', filename='course_ratings.png') }}"
+                 alt="Course average ratings chart">
+        </section>
+        <section class="panel">
+            <h2>Teacher Rating Chart</h2>
+            <img class="chart"
+                 src="{{ url_for('static', filename='teacher_ratings.png') }}"
+                 alt="Teacher average ratings chart">
+        </section>
+    {% endif %}
+
+    <!-- Secure Locked Student Records Panel (Higher Authority Only) -->
+    <section class="panel" id="secure-student-panel">
+        <h2>Individual Student Responses (Confidential)</h2>
+        
+        <!-- Lock Screen (Shown by default) -->
+        <div id="auth-lock-screen" style="padding: 20px; text-align: center; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
+            <p style="margin-bottom: 12px; font-weight: bold; color: #b42318;">🔒 Confidential Data: Student IDs &amp; Roll Numbers are hidden.</p>
+            <p style="font-size: 14px; color: #64748b; margin-bottom: 15px;">Enter Higher Authority Security PIN to view individual records.</p>
+            <input type="password" id="auth-pin-input" placeholder="Enter Security PIN (1234)" style="padding: 10px; width: 220px; border: 1px solid #cbd5e1; border-radius: 6px; text-align: center; margin-right: 10px;">
+            <button type="button" onclick="unlockStudentData()" style="padding: 10px 18px; background: #35633e; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">Unlock Data</button>
+            <p id="auth-error-msg" style="color: #b42318; font-size: 13px; margin-top: 10px; display: none;">Incorrect PIN. Access Denied.</p>
+        </div>
+
+        <!-- Actual Table & Rating Summary (Hidden by default until unlocked) -->
+        <div id="secure-student-table-container" style="display: none; margin-top: 15px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <span style="color: #166534; font-weight: bold; font-size: 14px;">🔓 Unlocked Successfully - Confidential Higher Authority View</span>
+                <button type="button" onclick="lockStudentData()" style="padding: 6px 12px; background: #991b1b; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Lock Again</button>
+            </div>
+
+            <!-- Separate Rating Count Breakdown Summary (5/5, 4/5, etc.) -->
+            <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; text-align: center;">
+                {% for star, count in rating_counts.items() %}
+                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px 8px; border-radius: 8px;">
+                    <div style="font-size: 12px; color: #166534; font-weight: bold;">{{ star }} Star ({{ star }}/5)</div>
+                    <div style="font-size: 20px; font-weight: bold; color: #14532d; margin-top: 4px;">{{ count }}</div>
+                </div>
+                {% endfor %}
+            </div>
+
+            {% if student_feedback_list %}
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Student Name</th>
+                            <th>Student ID / Roll No</th>
+                            <th>Branch</th>
+                            <th>Course</th>
+                            <th>Rating</th>
+                            <th>Comments</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for row in student_feedback_list %}
+                        <tr>
+                            <td>{{ row.student_name }}</td>
+                            <td><strong>{{ row.student_id }}</strong></td>
+                            <td>{{ row.branch }}</td>
+                            <td>{{ row.course_name }}</td>
+                            <td><span style="background: #eef4ee; padding: 4px 8px; border-radius: 4px; font-weight: bold; color: #35633e;">{{ row.rating }} / 5 ⭐</span></td>
+                            <td>{{ row.comments if row.comments else '-' }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+                <p class="empty">No individual responses recorded yet.</p>
+            {% endif %}
+        </div>
+    </section>
+
+    <p><a href="{{ url_for('index') }}">Open Feedback Form</a></p>
+</main>
+
+<script>
+document.querySelectorAll(".bar[data-width]").forEach(function(bar) {
+    var percentage = parseFloat(bar.dataset.width) || 0;
+    bar.style.width = Math.max(0, Math.min(100, percentage)) + "%";
+});
+
+function unlockStudentData() {
+    const pinInput = document.getElementById("auth-pin-input").value;
+    const secretPin = "1234"; // Security PIN
+
+    if (pinInput === secretPin) {
+        document.getElementById("auth-lock-screen").style.display = "none";
+        document.getElementById("secure-student-table-container").style.display = "block";
+        document.getElementById("auth-error-msg").style.display = "none";
+    } else {
+        document.getElementById("auth-error-msg").style.display = "block";
+    }
+}
+
+function lockStudentData() {
+    document.getElementById("auth-lock-screen").style.display = "block";
+    document.getElementById("secure-student-table-container").style.display = "none";
+    document.getElementById("auth-pin-input").value = "";
+}
+</script>
+</body>
+</html>

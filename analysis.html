@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback Analysis Dashboard</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f1f8f4;
+            color: #26352c;
+        }
+
+        header {
+            background: #176b45;
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        main {
+            width: 90%;
+            max-width: 1100px;
+            margin: 30px auto;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .card, .panel {
+            background: white;
+            padding: 22px;
+            border-radius: 10px;
+            margin-bottom: 22px;
+            box-shadow: 0 3px 10px #00000010;
+        }
+
+        .number {
+            color: #176b45;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        h2 {
+            color: #176b45;
+        }
+
+        button {
+            padding: 10px 18px;
+            background: white;
+            color: #176b45;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background: #eaf5ee;
+            color: #176b45;
+        }
+
+        .chart {
+            width: 100%;
+            max-width: 850px;
+            display: block;
+            margin: 20px auto;
+        }
+
+        .rating-row {
+            margin: 15px 0;
+            padding: 12px;
+            background: #eaf5ee;
+            border-radius: 6px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #64756a;
+        }
+
+        @media (max-width: 600px) {
+            main {
+                width: 94%;
+            }
+
+            header {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div>
+            <h1>Student Feedback Analysis</h1>
+            <p>Administrator Dashboard</p>
+        </div>
+
+        <form action="/admin/logout" method="POST">
+            <button type="submit">Log Out</button>
+        </form>
+    </header>
+
+    <main>
+        <h2>Feedback Overview</h2>
+        <p>View student responses and course performance.</p>
+
+        <section class="cards">
+            <div class="card">
+                <h3>Total Responses</h3>
+                <p class="number">{{ total_responses }}</p>
+            </div>
+
+            <div class="card">
+                <h3>Average Rating</h3>
+                <p class="number">{{ overall_average }} / 5</p>
+            </div>
+
+            <div class="card">
+                <h3>Courses Reviewed</h3>
+                <p class="number">{{ course_count }}</p>
+            </div>
+        </section>
+
+        {% if has_data %}
+
+        <section class="panel">
+            <h2>Course-wise Feedback</h2>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Course Name</th>
+                            <th>Average Rating</th>
+                            <th>Responses</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for course in course_results %}
+                        <tr>
+                            <td>{{ course.course_name }}</td>
+                            <td>{{ course.average_rating }} / 5</td>
+                            <td>{{ course.responses }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2>Course Rating Chart</h2>
+
+            <img
+                class="chart"
+                src="{{ url_for('static', filename='course_ratings.png') }}"
+                alt="Course rating chart">
+        </section>
+
+        <section class="panel">
+            <h2>Rating Distribution</h2>
+
+            {% for rating, count in rating_counts.items() %}
+            <div class="rating-row">
+                Rating: {{ rating }} Star
+                <strong> — {{ count }} responses</strong>
+            </div>
+            {% endfor %}
+        </section>
+
+        {% else %}
+
+        <section class="panel">
+            <h2>No Feedback Yet</h2>
+            <p>Submit student feedback to view the analysis.</p>
+            <a href="/">Open Feedback Form</a>
+        </section>
+
+        {% endif %}
+    </main>
+
+    <footer>
+        Student Feedback Analysis System
+    </footer>
+</body>
+</html>
